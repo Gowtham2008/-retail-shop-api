@@ -60,4 +60,6 @@ Build a complete Retail Shop REST API with:
 * Authentication
 * JWT
 * API validation
+  <img width="1920" height="1080" alt="Screenshot 2026-09-04 203529" src="https://github.com/user-attachments/assets/2f2d5d32-8a8c-4d92-83e8-4d471cc92186" />
+
 * Error handling
