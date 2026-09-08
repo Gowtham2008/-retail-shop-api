@@ -1,14 +1,20 @@
-from fastapi import FastAPI, status,HTTPException
-from pydantic import BaseModel
+'''
+#### learing code###
+
+from fastapi import FastAPI, status,HTTPException,Depends
+from pydantic import BaseModel, Field
 
 
 app = FastAPI()
 
 
-class Products(BaseModel):
-    id: int
-    name: str
-    price: float
+class ProductCreate(BaseModel):
+    name: str =Field(min_length=1,max_length=100)
+    price: float = Field(gt=0, description="Price must be greater than zero")
+class ProductResponse(BaseModel):
+    id:int
+    name:str
+    price:float
 
 
 products = [
@@ -26,36 +32,43 @@ def home():
 # GET - all products
 @app.get("/products")
 def get_products():
-    return products
+    return products 
 
 
 # POST - add product
-@app.post("/products", status_code=status.HTTP_201_CREATED)
-def add_product(product: Products):
-    products.append(product.model_dump())
-    return product
-
+@app.post("/products", status_code=status.HTTP_201_CREATED,response_model=ProductCreate )
+def add_product(product: ProductCreate):
+    new_id=len(products)+1
+    new_product={
+        "id": new_id,
+        "name": product.name,
+        "price": product.price
+    }
+    products.append(new_product)
+    return new_product 
 
 # GET - product by ID (Path Parameter)
-@app.get("/products/{product_id}")
+@app.get("/products/{product_id}", response_model=ProductResponse)
 def get_product(product_id: int):
     for product in products:
         if product["id"] == product_id:
             return product
 
-    return {"message": "Product not found"}
+    raise HTTPException(status_code=404,detail="product not found ")
+
 
 
 # PUT - update product
 @app.put("/products/{product_id}")
-def update_product(product_id: int, product: Products):
+def update_product(product_id: int,product: ProductCreate):
     for item in products:
         if item["id"] == product_id:
             item["name"] = product.name
             item["price"] = product.price
             return item
 
-    return {"message": "Product not found"}
+    raise HTTPException(status_code=404,detail="product not found ")
+    
 
 # PATCH - update product
 #why product_update class becoz in class Product req all values so we create saparate class for patch
@@ -64,17 +77,21 @@ class ProductUpdate(BaseModel):
     price: float | None = None
 
 @app.patch("/products/{product_id}")
-def patch_product(product_id: int, product_update: ProductUpdate):
+def patch_product(product_id: int, product: ProductUpdate):
     for item in products:
         if item["id"] == product_id:
-            if product_update.name is not None:
-                item["name"] = product_update.name
-            if product_update.price is not None:
-                item["price"] = product_update.price
+
+            if product.name is not None:
+                item["name"] = product.name
+
+            if product.price is not None:
+                item["price"] = product.price
+
             return item
 
-    return {"message": "Product not found"}
 
+    raise HTTPException(status_code=404,detail="product not found ")
+    
 #delete product
 @app.delete("/products/{product_id}")
 def delete_product(product_id:int):
@@ -83,3 +100,29 @@ def delete_product(product_id:int):
             products.remove(product)
             return {"message":"Product deleted successfully"}
     raise HTTPException(status_code=404,detail="Product not found")      
+
+#dependncy injection
+def get_shop():
+    return {"shop is open 24/7"}
+
+@app.get("/test")
+def test(shop=Depends(get_shop)):
+    return shop  
+  
+'''
+from fastapi import FastAPI
+from database.connection import Base, engine
+from database.models import Product
+from routers import product
+
+Base.metadata.create_all(bind=engine)
+
+app = FastAPI()
+
+
+@app.get("/")
+def home():
+    return {"message": "Welcome to Retail Shop"}
+
+
+app.include_router(product.router)   
